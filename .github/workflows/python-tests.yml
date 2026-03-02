@@ -1,8 +1,0 @@
-name: Python application # Line 1
-on: [push]               # Line 2 (Make sure there are no tabs here)
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3

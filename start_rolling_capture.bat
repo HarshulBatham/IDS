@@ -1,0 +1,3 @@
+@echo off
+echo Starting 10-minute rolling background capture on Wi-Fi...
+"C:\Program Files\Wireshark\dumpcap.exe" -i "Wi-Fi" -b duration:600 -w rolling_capture.pcap -q
