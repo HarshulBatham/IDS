@@ -1,19 +1,23 @@
-# IDS
+# 🛡️ AeroGuard IDS (Live Network Anomaly Detector)
 
-# Network Intrusion Detection System (IDS)
+AeroGuard is a lightweight, machine-learning-powered Intrusion Detection System (IDS) designed for edge execution. It monitors live local network traffic, flags statistical anomalies using an Isolation Forest model, and traces malicious flows back to the local software processes generating them.
 
-An AI-powered system designed to monitor network traffic and detect anomalies in real-time. This project uses Machine Learning to classify network packets as "Normal" or "Malicious."
+## 🚀 Key Features
+* **Real-Time Interface Sniffing:** Dynamically binds to active network adapters (Wi-Fi, Ethernet) to capture traffic.
+* **Flow-Based ML Detection:** Translates raw packets into statistical flows using NFStream, ensuring high-speed analysis without deep payload inspection.
+* **Process Attribution:** Automatically maps anomalous outbound network connections to local Process IDs (PIDs).
+* **AI-Ready Architecture:** Designed to export sanitized flow metadata to Large Language Models (LLMs) for human-readable root cause analysis.
+* **Privacy First:** The core ML detection runs 100% locally and offline. 
 
-##  Key Features
-- **Live Traffic Monitoring:** Uses Scapy to capture and inspect network packets.
-- **Machine Learning Engine:** Utilizes a Random Forest (or similar) classifier to identify threats.
-- **Web Dashboard:** (Optional) Integrated Flask server to visualize live system analysis.
+## ⚙️ Installation & Setup
 
-##  Setup Instructions
+**Prerequisites:**
+You must have a packet capture driver installed on your host system:
+* **Windows:** Install [Npcap](https://npcap.com/) (Ensure "Install Npcap in WinPcap API-compatible Mode" is checked).
+* **Linux:** Install `tcpdump` (`sudo apt install tcpdump`).
 
-### 1. Prerequisites
-Ensure you have Python 3.8+ installed. You may also need to install `npcap` (for Windows) or `libpcap` (for Linux) to allow packet capturing.
-
-### 2. Install Dependencies
-```bash
-pip install -r requirements.txt
+**Environment Setup:**
+1. Clone the repository and navigate to the directory.
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
