@@ -1,2 +1,36 @@
-live_capture.pcap
+# --- Python Environments & Caches ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+.venv
+
+# --- AeroGuard Specific Security ---
+# Never upload packet captures
+*.pcap
+*.pcapng
+*.cap
+
+# Ignore local agent temporary feature extractions
+local_agent/temp_*.pkl
+local_agent/temp_*.json
+local_agent/cache/
+
+# Ignore user session databases (if you add SQLite later for tracking 5 free uses)
+*.sqlite3
+*.db
+
+# --- IDEs and OS Files ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+# Ignore PyInstaller build and dist folders
+build/
+dist/
+*.spec
+
+# Ignore machine learning models if they get too big
 *.pkl

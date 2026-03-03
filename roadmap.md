@@ -35,3 +35,14 @@
 - Switch from Streamlit to a desktop-native UI framework (like PyQt or CustomTkinter) for lower RAM usage.
 - Add real-time line charts showing bytes/sec and packet rates.
 - Add an "Export to PacketsTotal" button for cloud PCAP viewing.
+
+button not working
+analyze with llm not working
+api/ollama not working
+last 10 mins not working
+show ip whitelist
+if ollama is selected, ask for user to download ( and that download will only download specific model)
+if gem api is selected, then first 5 free trial, then stop
+webapp is fine or app?
+training for 60 seconds is okay or it should be 1 min , 10 min, 30 min options?
+explain the backend working,use of it, what components are required in it 

@@ -1,0 +1,6 @@
+python-socketio[client]==5.11.0
+requests==2.31.0
+scapy==2.5.0
+pandas==2.2.0
+nfstream==6.5.3
+psutil==5.9.5
