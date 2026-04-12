@@ -602,7 +602,12 @@ redis_client = redis.Redis(
 # ─────────────────────────────────────
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    client_ip = request.client.host
+    # Extract real client IP from X-Forwarded-For (Cloud Run proxy)
+    forwarded_for = request.headers.get('X-Forwarded-For')
+    if forwarded_for:
+        client_ip = forwarded_for.split(',')[0].strip()
+    else:
+        client_ip = request.client.host
     rate_limit_key = f"rate_limit:{client_ip}"
     
     # Check current request count
@@ -633,21 +638,29 @@ async def analyze_threat(request: Request):
     7. Return threat report
     """
     
-    # Get request body (held in memory)
-    try:
-        body = await request.json()
-    except Exception:
+    # Check Content-Length BEFORE parsing to prevent OOM DoS
+    content_length = request.headers.get('content-length')
+    if content_length and int(content_length) > 5 * 1024 * 1024:
         return JSONResponse(
-            {"error": "Invalid JSON"},
+            {"error": "Payload exceeds 5MB limit"},
             status_code=400
         )
     
-    # Check payload size (Layer 2 defense)
-    body_size = len(json.dumps(body).encode('utf-8'))
-    if body_size > 5 * 1024 * 1024:  # 5MB
-        log_strike(body['pat'], "oversized_payload")
+    # Stream-read body with hard size cap to prevent OOM
+    body_bytes = b''
+    async for chunk in request.stream():
+        body_bytes += chunk
+        if len(body_bytes) > 5 * 1024 * 1024:  # 5MB hard cap
+            return JSONResponse(
+                {"error": "Payload exceeds 5MB limit"},
+                status_code=400
+            )
+    
+    try:
+        body = json.loads(body_bytes)
+    except Exception:
         return JSONResponse(
-            {"error": "Payload exceeds 5MB limit"},
+            {"error": "Invalid JSON"},
             status_code=400
         )
     
@@ -1577,7 +1590,7 @@ from cryptography.hazmat.primitives import hashes
 
 # Generate encryption key from password
 salt = os.urandom(16)
-kdf = PBKDF2(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000)
+kdf = PBKDF2(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=600000)  # OWASP 2023+
 key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
 
 # Encrypt PAT

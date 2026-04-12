@@ -55,7 +55,7 @@ AeroGuard IDS is built in **7 phases**, each with explicit testing gates and CI/
 #### 1. **Startup Janitor** (`local/janitor.py`)
 
 - Implement `enumerate_residual_files()` to scan OS temp directory for stale `.pcap` and lock files
-- Implement `secure_delete_file()` using 7-pass Gutmann algorithm for secure file overwriting
+- Implement `secure_delete_file()` using SSD-aware single zero-pass overwrite combined with OS Full Disk Encryption reliance
 - Register startup hook using platform-specific mechanisms (Windows Task Scheduler, macOS launchd, Linux systemd)
 - Create lightweight logging module to audit all deleted files (for compliance)
 
@@ -152,7 +152,7 @@ class TestStartupJanitor:
             f.write("SENSITIVE_DATA_12345")
             path = Path(f.name)
         
-        success = secure_delete_file(path, passes=7)
+        success = secure_delete_file(path)
         
         assert success is True
         assert not path.exists()
@@ -2031,6 +2031,11 @@ jobs:
       run: |
         pip install safety
         safety check --json
+    
+    - name: Run pip-audit (dependency vulnerability scan)
+      run: |
+        pip install pip-audit
+        pip-audit --desc --fix --dry-run
 
   test:
     name: Unit Tests
@@ -2333,16 +2338,17 @@ jobs:
 
 #### 1. **Encryption Module** (`local/security/encryption.py`)
 
-- Implement `EncryptedPATStorage` class using AES-256-Fernet with PBKDF2 (100k iterations)
-- Implement `SecurePCAPHandler.secure_delete()` with 7-pass Gutmann algorithm
+- Implement `EncryptedPATStorage` class using AES-256-Fernet with PBKDF2 (600k iterations, OWASP 2023+ minimum)
+- Implement `SecurePCAPHandler.secure_delete()` with SSD-aware deletion (single zero-pass + OS Full Disk Encryption reliance; use RAM-backed tmpfs on Linux)
 - Implement `SecureFileOperations` for restrictive file permissions (mode 0o600)
 - Test encryption/decryption round-trips (encrypt → decrypt → verify)
 
 #### 2. **Prompt Injection & Input Validation** (`cloud/security/injection_detector.py`)
 
-- Implement `PromptInjectionDetector` class with regex patterns for SQL, shell, Python injection
-- Implement `sanitize_metadata()` to remove dangerous keys (__proto__, constructor, etc.)
-- Implement `build_safe_gemini_query()` to construct hardened Gemini prompts
+- Implement strict Pydantic schema validation for all incoming metadata fields (no free-text)
+- Implement `<DATA>` block isolation for Gemini prompts (metadata treated as opaque data)
+- Configure Gemini structured output (`response_mime_type="application/json"`, `response_schema`) to prevent free-text exfiltration
+- Strip prototype-pollution keys (`__proto__`, `constructor`) before processing
 - Test with known injection payloads (OWASP SSRF, prompt injection samples)
 
 #### 3. **Security Audit Logging** (`cloud/security/security_auditer.py`)
