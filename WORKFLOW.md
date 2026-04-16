@@ -38,7 +38,7 @@ This document provides a **step-by-step implementation roadmap** organized into 
 
 **Timeline:** Week 1–2  
 **Objective:** Build stable, offline-capable network packet capture and temp file management  
-**Dependencies:** scapy, pyshark, tshark (system), Python stdlib (tempfile, os)  
+**Dependencies:** scapy (pure Python packet capture), Python stdlib (tempfile, os)  
 **Deliverable:** Standalone Python module that captures network traffic and spools to OS temp without crashing or exhausting RAM
 
 ### Key Modules & Functions to Implement

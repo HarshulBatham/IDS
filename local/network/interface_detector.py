@@ -7,7 +7,6 @@ Provides validation and interactive selection for packet capture.
 """
 
 import logging
-import platform
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -99,7 +98,7 @@ def get_active_interfaces() -> List[Dict]:
 def _get_interfaces_scapy_only() -> List[Dict]:
     """Fallback interface detection using only scapy."""
     try:
-        from scapy.all import get_if_list, get_if_hwaddr, conf
+        from scapy.all import get_if_list, get_if_hwaddr
 
         interfaces = []
         for iface_name in get_if_list():
@@ -174,7 +173,10 @@ def select_interface_interactive() -> Optional[str]:
     print("-" * 50)
     for idx, iface in enumerate(interfaces, start=1):
         wireless_tag = " [wireless]" if iface["is_wireless"] else ""
-        print(f"  {idx}. {iface['name']:<20} IP: {iface['ip']:<16} MTU: {iface['mtu']}{wireless_tag}")
+        name = iface['name']
+        ip_addr = iface['ip']
+        mtu = iface['mtu']
+        print(f"  {idx}. {name:<20} IP: {ip_addr:<16} MTU: {mtu}{wireless_tag}")
     print("-" * 50)
 
     while True:

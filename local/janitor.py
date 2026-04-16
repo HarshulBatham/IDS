@@ -10,7 +10,6 @@ import logging
 import os
 import platform
 import tempfile
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
@@ -197,7 +196,11 @@ def register_startup_hook() -> bool:
 
     system = platform.system()
     python_exe = sys.executable
-    janitor_cmd = f'"{python_exe}" -c "from local.janitor import run_startup_janitor; run_startup_janitor()"'
+    janitor_cmd = (
+        f'"{python_exe}" -c '
+        f'"from local.janitor import run_startup_janitor; '
+        f'run_startup_janitor()"'
+    )
 
     try:
         if system == "Windows":

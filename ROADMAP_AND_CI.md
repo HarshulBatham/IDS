@@ -12,26 +12,28 @@
 1. [Overview](#overview)
 2. [Phase 1: Local Data Engine & Spooling](#phase-1-local-data-engine--spooling)
 3. [Phase 2: Local ML & Data Sanitization](#phase-2-local-ml--data-sanitization)
-4. [Phase 3: Cloud Backend & Firebase IAM](#phase-3-cloud-backend--firebase-iam)
-5. [Phase 4: Cloud Frontend (Streamlit)](#phase-4-cloud-frontend-streamlit)
-6. [Phase 5: CI/CD Pipelines (GitHub Actions)](#phase-5-cicd-pipelines-github-actions)
-7. [Phase 6: Security Hardening & Logging Infrastructure](#phase-6-security-hardening--logging-infrastructure)
-8. [Phase 7: Compliance, Documentation & Monitoring](#phase-7-compliance-documentation--monitoring)
-9. [Integration & Deployment Strategy](#integration--deployment-strategy)
-10. [Success Metrics & Gates](#success-metrics--gates)
+4. [Phase 2.5: CLI Orchestration & Local Pipeline](#phase-25-cli-orchestration--local-pipeline)
+5. [Phase 3: Cloud Backend & Firebase IAM](#phase-3-cloud-backend--firebase-iam)
+6. [Phase 4: Cloud Frontend (Streamlit)](#phase-4-cloud-frontend-streamlit)
+7. [Phase 5: CI/CD Pipelines (GitHub Actions)](#phase-5-cicd-pipelines-github-actions)
+8. [Phase 6: Security Hardening & Logging Infrastructure](#phase-6-security-hardening--logging-infrastructure)
+9. [Phase 7: Compliance, Documentation & Monitoring](#phase-7-compliance-documentation--monitoring)
+10. [Integration & Deployment Strategy](#integration--deployment-strategy)
+11. [Success Metrics & Gates](#success-metrics--gates)
 
 ---
 
 ## Overview
 
-AeroGuard IDS is built in **7 phases**, each with explicit testing gates and CI/CD validation. The roadmap prioritizes:
+AeroGuard IDS is built in **7 core phases + Phase 2.5**, each with explicit testing gates and CI/CD validation. The roadmap prioritizes:
 
 1. **Offline-First Development** (Phases 1–2): Local system fully functional without cloud
-2. **Cloud Infrastructure** (Phase 3): Robust, secure backend with comprehensive testing
-3. **User Experience** (Phase 4): Polished web interface with seamless PAT integration
-4. **Continuous Integration** (Phase 5): Automated testing, linting, and deployment pipelines
-5. **Security Hardening** (Phase 6): Encryption, logging, threat detection, and vulnerability fixes
-6. **Compliance & Monitoring** (Phase 7): Documentation, GDPR compliance, SLOs, and observability
+2. **CLI Orchestration** (Phase 2.5): Command-line tools for capture, detection, and calibration
+3. **Cloud Infrastructure** (Phase 3): Robust, secure backend with comprehensive testing
+4. **User Experience** (Phase 4): Polished web interface with seamless PAT integration
+5. **Continuous Integration** (Phase 5): Automated testing, linting, and deployment pipelines
+6. **Security Hardening** (Phase 6): Encryption, logging, threat detection, and vulnerability fixes
+7. **Compliance & Monitoring** (Phase 7): Documentation, GDPR compliance, SLOs, and observability
 
 **Key Principles:**
 - Each phase must pass its testing gate before advancing
@@ -1105,7 +1107,299 @@ def audit_sanitization_output(json_output):
 - ✅ Feature extraction produces consistent outputs
 - ✅ Model serialization/deserialization works correctly
 
-**Sign-Off:** Security Lead must certify sanitization audit before Phase 3.
+**Sign-Off:** Security Lead must certify sanitization audit before Phase 2.5.
+
+---
+
+## Phase 2.5: CLI Orchestration & Local Pipeline
+
+**Timeline:** 1–2 days (after Phase 2 complete)  
+**Owner:** Backend Team  
+**Dependencies:** Phase 1–2 (all local modules complete)
+
+### Purpose
+
+Phase 2.5 provides a fully-functional local command-line interface that orchestrates all Phase 1 & Phase 2 components into a cohesive pipeline. Users can:
+
+1. **Capture** network traffic (with Scapy or tshark)
+2. **Calibrate** baseline models (train anomaly detector on normal traffic)
+3. **Detect** anomalies in captured traffic
+4. **Full Pipeline**: capture → detect → sanitize → report
+
+All operations are completely offline without cloud dependencies, providing immediate value before Phase 3 cloud integration.
+
+### Implementation Deliverables
+
+#### 1. **Orchestration Engine** (`local/cli/orchestrator.py`)
+
+Coordinates capture, feature extraction, anomaly detection, and sanitization:
+
+- `AnalysisOrchestrator.list_interfaces()` - Enumerate available network interfaces
+- `AnalysisOrchestrator.validate_interface(name)` - Check if interface supports packet capture
+- `AnalysisOrchestrator.capture_traffic(interface, duration, method)` - Capture PCAP (pyshark or scapy)
+- `AnalysisOrchestrator.detect_anomalies(pcap_path, baseline_model)` - Analyze PCAP with trained model
+- `AnalysisOrchestrator.calibrate_baseline(interface, duration)` - Capture baseline and train model
+- `AnalysisOrchestrator.save_analysis_report(result, output_path)` - Export JSON report
+
+#### 2. **CLI Commands** (`local/cli/commands.py`)
+
+Click-based command-line interface with subcommands:
+
+```bash
+# List available network interfaces
+python -m local.cli list-interfaces
+
+# Validate interface for packet capture
+python -m local.cli validate -i eth0
+
+# Capture network traffic to PCAP
+python -m local.cli capture -i eth0 -d 60 -m pyshark -o capture.pcap
+
+# Detect anomalies in PCAP file
+python -m local.cli detect -p capture.pcap -b baseline.pkl -o report.json
+
+# Calibrate baseline model (capture + train)
+python -m local.cli calibrate -i eth0 -d 60 -o baseline.pkl
+
+# Full pipeline: capture → detect → report
+python -m local.cli run -i eth0 -d 60 -b baseline.pkl -o report.json
+```
+
+#### 3. **CLI Module** (`local/cli/`)
+
+```
+local/cli/
+├── __init__.py              # Module init
+├── __main__.py              # python -m local.cli entry point
+├── orchestrator.py          # Core orchestration logic (250 LOC)
+└── commands.py              # Click CLI commands (200 LOC)
+```
+
+### Testing Strategy
+
+#### Unit Tests for Orchestrator
+
+```
+tests/unit/test_orchestrator.py
+```
+
+**Test Coverage:**
+- Interface listing and validation (mocked)
+- PCAP capture with both pyshark and scapy (mocked subprocess/threading)
+- Anomaly detection pipeline (mocked models)
+- Baseline calibration workflow (mocked capture + training)
+- Report generation and JSON export
+- Error handling for missing files, invalid inputs, permission errors
+
+**Test Cases:**
+```python
+# Interface Tests
+- test_list_interfaces_returns_interfaces
+- test_list_interfaces_empty
+- test_validate_interface_success
+- test_validate_interface_failure
+
+# Capture Tests
+- test_capture_traffic_pyshark_success
+- test_capture_traffic_scapy_success
+- test_capture_traffic_invalid_method
+
+# Detection Tests
+- test_detect_anomalies_success
+- test_detect_anomalies_high_threat_level
+- test_detect_anomalies_no_features
+
+# Calibration Tests
+- test_calibrate_baseline_success
+- test_calibrate_baseline_capture_fails
+
+# Report Tests
+- test_save_analysis_report_success
+- test_save_analysis_report_invalid_path
+```
+
+**Expected Coverage:** >85% on orchestrator module
+
+#### Integration Tests
+
+End-to-end pipeline validation:
+
+```python
+# Full pipeline simulation
+- test_full_workflow_capture_to_report
+- test_workflow_with_baseline_model
+- test_error_recovery_on_capture_failure
+```
+
+### Testing Gate
+
+**Requirements to Pass:**
+
+✅ All orchestrator unit tests passing (15+ tests)  
+✅ Full pipeline integration test passing  
+✅ Code coverage >85% on orchestrator  
+✅ CLI all commands work end-to-end  
+✅ Error messages are user-friendly  
+✅ Zero crashes on invalid input  
+
+**Testing Checklist:**
+```bash
+# Run all orchestrator tests
+pytest tests/unit/test_orchestrator.py -v
+
+# Check coverage
+pytest tests/unit/test_orchestrator.py --cov=local.cli --cov-report=term-missing
+
+# Verify CLI works
+python -m local.cli --help
+python -m local.cli list-interfaces
+python -m local.cli validate -i lo  # Should fail or warn
+
+# Test all commands
+python -m local.cli capture --help
+python -m local.cli detect --help
+python -m local.cli calibrate --help
+python -m local.cli run --help
+```
+
+### User Workflows
+
+#### Workflow 1: First-Time Setup
+
+```bash
+# Step 1: List available interfaces
+python -m local.cli list-interfaces
+# Output: eth0 (192.168.1.100), wlan0 (192.168.1.101)
+
+# Step 2: Validate interface
+python -m local.cli validate -i eth0
+# Output: ✓ eth0 is ready for capture
+
+# Step 3: Calibrate baseline (capture normal traffic)
+python -m local.cli calibrate -i eth0 -d 120 -o ~/.aerosguard/baseline.pkl
+# Captures 2 min of normal traffic and trains model
+
+# Output:
+# ✓ Baseline calibration complete!
+#   Model: /home/user/.aerosguard/baseline.pkl
+#   Samples: 450 flows
+#   Training Time: 0.45s
+```
+
+#### Workflow 2: Detect Anomalies in Captured Traffic
+
+```bash
+# Step 1: Capture suspicious traffic
+python -m local.cli capture -i eth0 -d 60 -o suspicious.pcap
+# Output:
+# ✓ Capture successful!
+#   File: suspicious.pcap
+#   Packets: 2150
+#   Duration: 60s
+
+# Step 2: Analyze with baseline model
+python -m local.cli detect -p suspicious.pcap -b ~/.aerosguard/baseline.pkl -o report.json
+# Output:
+# ✓ Analysis complete!
+#   Threat Level: MEDIUM
+#   Anomalies: 8/45 flows (17.8%)
+#   Report: report.json
+
+# Step 3: Review JSON report
+cat report.json
+# {
+#   "timestamp": "2026-04-16T10:30:45",
+#   "analysis": {
+#     "threat_level": "medium",
+#     "anomalous_count": 8,
+#     "total_flows": 45,
+#     "anomaly_percent": 17.8,
+#     "sanitized_data": { ... }
+#   }
+# }
+```
+
+#### Workflow 3: Full Pipeline from Capture to Report
+
+```bash
+# One command: capture, analyze, and report
+python -m local.cli run -i eth0 -d 30 -b ~/.aerosguard/baseline.pkl -o report.json
+
+# Output:
+# ============================================================
+# STEP 1: CAPTURE TRAFFIC
+# ============================================================
+# ✓ Captured 850 packets
+# 
+# ============================================================
+# STEP 2: DETECT ANOMALIES
+# ============================================================
+# ✓ Analysis complete!
+#   Threat Level: LOW
+#   Anomalies: 1/25 flows (4.0%)
+# 
+# ============================================================
+# STEP 3: GENERATE REPORT
+# ============================================================
+# ✓ Report saved: report.json
+```
+
+### What This Enables
+
+✅ **Users can run complete IDS locally without Internet** (purely local pipeline)  
+✅ **Real-time threat detection** (capture + analyze in minutes)  
+✅ **Model training for network baseline** (capture → train in one command)  
+✅ **Privacy-safe reporting** (outputs sanitized JSON, not raw PCAP)  
+✅ **Foundation for Phase 3 API** (orchestrator becomes backend for REST endpoints)  
+
+### Data Flow
+
+```
+User Command Line
+    ↓
+[CLI Commands] (commands.py)
+    ↓
+[Orchestrator] (orchestrator.py)
+    ├→ [Interface Detector] (Phase 1)
+    ├→ [Scapy Sniffer] (Phase 1)
+    ├→ [PyShark Spooler] (Phase 1)
+    ├→ [Feature Extractor] (Phase 2)
+    ├→ [Anomaly Detector] (Phase 2)
+    ├→ [PCAP Sanitizer] (Phase 2)
+    └→ [SQLite Cache] (Phase 2)
+    ↓
+[JSON Report]
+   or
+[Sanitized Metadata]
+```
+
+### Deliverables Summary
+
+| Component | Location | LOC | Status |
+|-----------|----------|-----|--------|
+| Orchestrator | `local/cli/orchestrator.py` | ~250 | To Implement |
+| CLI Commands | `local/cli/commands.py` | ~200 | To Implement |
+| Unit Tests | `tests/unit/test_orchestrator.py` | ~300 | To Implement |
+| **Total** | **local/cli/** | **~750** | **New Phase 2.5** |
+
+### Phase 2.5 Success Metrics
+
+- ✅ All 15+ orchestrator tests passing
+- ✅ >85% code coverage on orchestrator
+- ✅ All 5 CLI commands functional (`list-interfaces`, `validate`, `capture`, `detect`, `calibrate`, `run`)
+- ✅ Full pipeline works end-to-end without errors
+- ✅ Baseline model successfully trains and scores traffic
+- ✅ JSON reports generated correctly
+- ✅ Zero crashes on edge cases (missing files, permissions, bad input)
+- ✅ User can calibrate → capture → detect → report in <5 minutes
+
+### Ready for Phase 3
+
+Once Phase 2.5 is complete:
+- ✅ Local system is fully functional and tested
+- ✅ Orchestrator patterns can be wrapped in FastAPI endpoints for Phase 3
+- ✅ Cache/persistence layer ready for cloud database integration
+- ✅ Users can continue using offline CLI while building cloud features
 
 ---
 
