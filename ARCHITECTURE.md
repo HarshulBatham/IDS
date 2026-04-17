@@ -833,13 +833,13 @@ def query_gemini_structured(metadata: dict) -> dict:
     return json.loads(response.text)
 ```
 
-#### 4.2 Process Injection Prevention
+#### 4.2 Input Validation for Network Interfaces
 
-**PyShark Subprocess Hardening:**
+**Scapy Interface Validation:**
 
 ```python
-class HardenedPySharkSpooler:
-    """PyShark with input validation to prevent command injection."""
+class ScapySnifferHardening:
+    """Scapy with input validation for network interfaces."""
     
     ALLOWED_INTERFACES = None  # Populated from scapy.get_if_list()
     
@@ -847,37 +847,28 @@ class HardenedPySharkSpooler:
     def validate_interface(cls, interface: str) -> bool:
         """Validate interface against whitelist of active interfaces."""
         if cls.ALLOWED_INTERFACES is None:
-            cls.ALLOWED_INTERFACES = set(scapy.get_if_list())
+            from scapy.all import get_if_list
+            cls.ALLOWED_INTERFACES = set(get_if_list())
         
         if interface not in cls.ALLOWED_INTERFACES:
             raise ValueError(f"Invalid interface: {interface}")
         return True
     
-    def start_capture(self, interface: str, duration: int, output_file: str):
+    def start_capture(self, interface: str, duration: int):
         """Start capture with validated interface."""
         # Whitelist validation
         if not self.validate_interface(interface):
             raise ValueError("Invalid interface")
         
-        # Validate output path (must be in temp directory)
-        output_path = Path(output_file)
-        temp_dir = Path(tempfile.gettempdir()) / "aerosguard"
-        if not str(output_path).startswith(str(temp_dir)):
-            raise ValueError("Output file must be in temp directory")
+        # Use Scapy's native sniffing (no subprocess, no shell injection risk)
+        from scapy.all import sniff
         
-        # Use list-based subprocess call (no shell injection)
-        cmd = [
-            'tshark',
-            '-i', interface,  # Whitelist validated
-            '-a', f'duration:{duration}',  # Duration validated
-            '-w', str(output_path),  # Path validated
-            '-q'  # Quiet mode
-        ]
-        
-        # Spawn without shell=True
-        self.process = subprocess.Popen(
-            cmd,
-            shell=False,  # CRITICAL: Prevents shell injection
+        self.packets = sniff(
+            iface=interface,  # Whitelist validated
+            timeout=duration,  # Duration specified
+            stop_filter=lambda x: False,  # Run until timeout
+            store=True  # Store packets in memory
+        )
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
@@ -1138,7 +1129,7 @@ class NetworkReliabilityHandler:
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
 | Dashboard | PyQt6 / Electron | Native UI |
-| PCAP Capture | scapy / pyshark | Network packet capture |
+| PCAP Capture | scapy | Network packet capture (pure Python) |
 | Sanitization | Custom Python module | Payload stripping |
 | Crypto | cryptography (Python) | PAT encryption |
 | File Ops | Python stdlib | Temp file management |

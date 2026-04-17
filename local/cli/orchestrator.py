@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Dict, Optional, Any
 from datetime import datetime
 
+import pandas as pd
+
 from local.network.interface_detector import get_active_interfaces, validate_capture_capability
 from local.network.scapy_sniffer import ScapySniffer
 from local.network.pyshark_spooler import PySharkSpooler
@@ -379,7 +381,7 @@ class AnalysisOrchestrator:
                     "error": "No features extracted from baseline",
                 }
 
-            features_df = self.extractor.normalize_features(features_df)
+            features_df, norm_stats = self.extractor.normalize_features(features_df)
 
             # Train model
             logger.info(f"Training anomaly detection model on {len(features_df)} flows...")

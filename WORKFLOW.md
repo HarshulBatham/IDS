@@ -264,126 +264,27 @@ class ScapySniffer:
 
 ---
 
-#### 4. **PyShark PCAP Spooler** (`local/network/pyshark_spooler.py`)
+#### 4. **Scapy Packet Sniffer** (`local/network/scapy_sniffer.py`)
 
-On-demand deep packet capture, written directly to OS temp files.
+Pure Python packet capture for local network monitoring, written directly to OS temp files.
 
-**Functions to Write:**
+**Overview:**
 
-```python
-# local/network/pyshark_spooler.py
+The ScapySniffer uses Scapy (pure Python library) for packet capture. No system dependencies required (no tshark/Wireshark).
+Writes directly to OS temp directory. Prevents RAM exhaustion during long captures.
 
-class PySharkSpooler:
-    """
-    High-level PCAP capture using pyshark/tshark.
-    Writes directly to OS temp directory.
-    Prevents RAM exhaustion during long captures.
-    """
-    
-    def __init__(self, interface: str, output_dir: str = None):
-        self.interface = interface
-        self.output_dir = output_dir or get_system_temp_dir()
-        self.capture_process = None
-        self.pcap_file_path = None
-    
-    def start_capture(self, duration_seconds: int) -> str:
-        """
-        Start pyshark capture with specified duration.
-        Uses tshark in batch mode (non-interactive).
-        Spools to temp file immediately.
-        
-        Args:
-            duration_seconds: Capture duration (60, 300, or 600)
-        
-        Returns:
-            Path to PCAP file (e.g., /tmp/aerosguard_capture_12345.pcap)
-        """
-        pass
-    
-    def get_capture_progress(self) -> dict:
-        """
-        Return capture progress (non-blocking).
-        Monitor file size instead of parsing packets.
-        
-        Returns:
-            {
-                'is_running': bool,
-                'file_size_mb': float,
-                'elapsed_seconds': int,
-                'estimated_pkts': int
-            }
-        """
-        pass
-    
-    def stop_capture_gracefully(self) -> str:
-        """
-        Terminate capture gracefully (SIGTERM).
-        Wait up to 5 seconds for process to finish.
-        
-        Returns:
-            Path to finalized PCAP file
-        """
-        pass
-    
-    def wait_for_capture_completion(self, timeout_sec: int = 700) -> str:
-        """
-        Block until capture finishes or timeout.
-        Used by CLI and batch workflows.
-        
-        Args:
-            timeout_sec: Max wait time (safety limit)
-        
-        Returns:
-            Path to completed PCAP file
-        
-        Raises:
-            TimeoutError if capture exceeds timeout
-        """
-        pass
-
-def validate_pcap_file(pcap_path: str) -> bool:
-    """
-    Verify PCAP file integrity (magic bytes, header).
-    Ensure tshark wrote complete file.
-    
-    Args:
-        pcap_path: Path to PCAP file
-    
-    Returns:
-        True if valid PCAP
-    """
-    pass
-
-def estimate_packet_count(pcap_path: str) -> int:
-    """
-    Quick estimate of packet count without full parse.
-    Use file size heuristics + sample packet reading.
-    
-    Args:
-        pcap_path: Path to PCAP file
-    
-    Returns:
-        Estimated packet count
-    """
-    pass
-```
+**Key Features:**
+- Thread-safe sniffing with live statistics
+- Real-time flow tracking and aggregation
+- Graceful shutdown and cleanup
+- Cross-platform (Windows/macOS/Linux)
+- No external system binaries needed
 
 **Testing:**
-- Capture 1/5/10 minutes → verify file creation and completion
+- Capture 1/5/10 minutes → verify flow statistics
 - Interrupt capture (Ctrl+C) → verify graceful shutdown
-- File size validation: 5 min capture ~500MB–2GB (realistic traffic)
-- Parsing: verify tshark produces valid PCAP (test with Wireshark)
-
----
-
-### Phase 1 Acceptance Criteria
-
-- ✅ Janitor removes stale files on boot (no crashes)
-- ✅ Interface detection works on Windows/macOS/Linux
-- ✅ Scapy can sniff continuously without memory leak (1 hour test)
-- ✅ PyShark captures valid PCAP files to temp directory
-- ✅ All functions have unit tests (pytest framework)
-- ✅ No external cloud dependencies
+- Thread safety: concurrent reads from statistics
+- Memory: long-running capture (1 hour) → RAM stable
 
 ---
 
@@ -471,7 +372,7 @@ class FeatureExtractor:
 
 def parse_pcap_to_flows(pcap_path: str) -> list[dict]:
     """
-    Parse PCAP file using pyshark into flow tuples.
+    Parse PCAP file using Scapy into flow tuples.
     Return list of flow metadata (no payloads).
     
     Args:
@@ -663,7 +564,7 @@ class PCAPSanitizer:
         Skip all application-layer data.
         
         Args:
-            packet: pyshark Packet object
+            packet: Scapy Packet object
         
         Returns:
             {

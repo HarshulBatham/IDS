@@ -153,8 +153,8 @@ class TestCaptureTraffic:
         """Test successful PCAP capture with Scapy method."""
         mock_sniffer = MagicMock()
         mock_sniffer.stop_sniffing.return_value = {
-            "total_packets": 500,
-            "total_bytes": 250000,
+            "packet_count": 500,
+            "bytes_total": 250000,
         }
         mock_sniffer_class.return_value = mock_sniffer
 
@@ -204,14 +204,13 @@ class TestDetectAnomalies:
 class TestCalibrateBaseline:
     """Test baseline calibration."""
 
-    @patch("local.cli.orchestrator.PySharkSpooler")
-    def test_calibrate_baseline_capture_fails(self, mock_spooler_class):
+    @patch("local.cli.orchestrator.ScapySniffer")
+    def test_calibrate_baseline_capture_fails(self, mock_sniffer_class):
         """Test baseline calibration when capture fails."""
-        # Setup mock to simulate capture failure
-        mock_spooler = MagicMock()
-        mock_spooler.start_capture.return_value = None
-        mock_spooler.validate_pcap_file.return_value = False
-        mock_spooler_class.return_value = mock_spooler
+        # Setup mock to simulate capture failure (sniffer raises exception)
+        mock_sniffer = MagicMock()
+        mock_sniffer.start_sniffing_threaded.side_effect = Exception("Interface not available")
+        mock_sniffer_class.return_value = mock_sniffer
 
         with tempfile.TemporaryDirectory() as tmpdir:
             orchestrator = AnalysisOrchestrator(cache_dir=tmpdir)
